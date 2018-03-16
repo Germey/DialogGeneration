@@ -1,70 +1,58 @@
-from config import ENABLE_PIPELINES, VOCABS_SIZE_LIMIT, DATASET_OUTPUT_FOLDER
-from preprocess.writer import Writer
-from preprocess.vocab import VocabTransformer
+import subprocess
+from os.path import join
+import time
+from pandas import Series
 import json
+from config import UNK, EOS, GO
 
-# file = './data/nlpcc/toutiao4nlpcc/train_without_summ.txt'
+output = './dataset/q1q2'
+folder = './source/q1q2'
 
-# pipelines and writer to process data
-pipelines = [pipeline() for pipeline in ENABLE_PIPELINES]
-writer = Writer(folder=DATASET_OUTPUT_FOLDER)
-vocab_transformer = VocabTransformer(limit=VOCABS_SIZE_LIMIT)
+file_pairs = [
+    ('log_post.txt', 'log_cmnt.txt'),
+    ('input_post.txt', 'input_cmnt.txt')
+]
 
-# train
-file = './source/nlpcc/toutiao4nlpcc/train_with_summ.txt'
-f = open(file, encoding='utf-8')
+post_output = 'request.txt'
+cmnt_output = 'response.txt'
 
-# start processing
-articles = []
-summaries = []
 
-# get source data
-for line in f.readlines():
-    item = json.loads(line)
-    article = item.get('article')
-    summary = item.get('summarization')
-    articles.append(article)
-    summaries.append(summary)
+def line_number(file, folder=folder):
+    result = subprocess.Popen('wc -l ' + join(folder, file), shell=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT)
+    return result.stdout.read().decode('utf-8').strip()
 
-# pre precess by pipeline
-for pipeline in pipelines:
-    print('Running', pipeline)
-    articles = pipeline.process_all(articles)
-    summaries = pipeline.process_all(summaries)
 
-# get vocabs of articles and summaries, they use the same vocabs
-word2id, id2word = vocab_transformer.build_vocabs(articles)
+post_output_file = open(join(output, post_output), 'w', encoding='utf-8')
+cmnt_output_file = open(join(output, cmnt_output), 'w', encoding='utf-8')
 
-# write data to txt
-writer.write_to_txt(articles, 'articles.train.txt')
-writer.write_to_txt(summaries, 'summaries.train.txt')
+for post, cmnt in file_pairs:
+    post_file = open(join(folder, post), encoding='utf-8')
+    cmnt_file = open(join(folder, cmnt), encoding='utf-8')
+    
+    for line in post_file.readlines():
+        post_output_file.write(line.strip() + '\n')
+    for line in cmnt_file.readlines():
+        cmnt_output_file.write(line.strip() + '\n')
 
-# write vocab to json
-writer.write_to_json(word2id, 'articles_vocabs.json')
-writer.write_to_json(word2id, 'summaries_vocabs.json')
+time.sleep(1)
 
-# eval
-file = './source/nlpcc/toutiao4nlpcc_eval/evaluation_with_ground_truth.txt'
-f = open(file, encoding='utf-8')
+print(line_number(post_output, output))
+print(line_number(cmnt_output, output))
 
-# start processing
-articles = []
-summaries = []
+vocabs = []
 
-# get source data
-for line in f.readlines():
-    item = json.loads(line)
-    article = item.get('article')
-    summary = item.get('summarization')
-    articles.append(article)
-    summaries.append(summary)
+with open(join(folder, 'post_vocab.txt')) as f:
+    f.readline()
+    f.readline()
+    for line in f.readlines():
+        vocabs.append(line.strip())
+    vocabs.insert(0, UNK)
+    vocabs.insert(0, EOS)
+    vocabs.insert(0, GO)
 
-# pre precess by pipeline
-for pipeline in pipelines:
-    print('Running', pipeline)
-    articles = pipeline.process_all(articles)
-    summaries = pipeline.process_all(summaries)
+s = Series(range(len(vocabs)), index=vocabs)
+print(s.to_dict())
 
-# write data to txt
-writer.write_to_txt(articles, 'articles.eval.txt')
-writer.write_to_txt(summaries, 'summaries.eval.txt')
+with open(join(output, 'vocab.json'), 'w', encoding='utf-8') as f:
+    f.write(json.dumps(s.to_dict(), ensure_ascii=False))

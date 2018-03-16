@@ -13,22 +13,22 @@ import config
 # Data loading parameters
 from utils import prepare_train_batch
 
-tf.app.flags.DEFINE_string('source_vocabulary', 'dataset/nlpcc_char/articles_vocabs.json', 'Path to source vocabulary')
-tf.app.flags.DEFINE_string('target_vocabulary', 'dataset/nlpcc_char/summaries_vocabs.json', 'Path to target vocabulary')
-tf.app.flags.DEFINE_string('source_train_data', 'dataset/nlpcc_char/articles.train.txt', 'Path to source training data')
-tf.app.flags.DEFINE_string('target_train_data', 'dataset/nlpcc_char/summaries.train.txt',
+tf.app.flags.DEFINE_string('source_vocabulary', 'dataset/q1q2/vocab.json', 'Path to source vocabulary')
+tf.app.flags.DEFINE_string('target_vocabulary', 'dataset/q1q2/vocab.json', 'Path to target vocabulary')
+tf.app.flags.DEFINE_string('source_train_data', 'dataset/q1q2/request.txt', 'Path to source training data')
+tf.app.flags.DEFINE_string('target_train_data', 'dataset/q1q2/response.txt',
                            'Path to target training data')
-tf.app.flags.DEFINE_string('source_valid_data', 'dataset/nlpcc_char/articles.eval.txt',
+tf.app.flags.DEFINE_string('source_valid_data', None,
                            'Path to source validation data')
-tf.app.flags.DEFINE_string('target_valid_data', 'dataset/nlpcc_char/summaries.eval.txt',
+tf.app.flags.DEFINE_string('target_valid_data', None,
                            'Path to target validation data')
 
 # Network parameters
-tf.app.flags.DEFINE_string('cell_type', 'lstm', 'RNN cell for encoder and decoder, default: lstm')
+tf.app.flags.DEFINE_string('cell_type', 'gru', 'RNN cell for encoder and decoder, default: lstm')
 tf.app.flags.DEFINE_string('attention_type', 'bahdanau', 'Attention mechanism: (bahdanau, luong), default: bahdanau')
 tf.app.flags.DEFINE_integer('hidden_units', 1024, 'Number of hidden units in each layer')
 tf.app.flags.DEFINE_integer('depth', 2, 'Number of layers in each encoder and decoder')
-tf.app.flags.DEFINE_integer('embedding_size', 500, 'Embedding dimensions of encoder and decoder inputs')
+tf.app.flags.DEFINE_integer('embedding_size', 300, 'Embedding dimensions of encoder and decoder inputs')
 tf.app.flags.DEFINE_integer('num_encoder_symbols', config.VOCABS_SIZE_LIMIT, 'Source vocabulary size')
 tf.app.flags.DEFINE_integer('num_decoder_symbols', config.VOCABS_SIZE_LIMIT, 'Target vocabulary size')
 
@@ -49,7 +49,7 @@ tf.app.flags.DEFINE_integer('save_freq', 500, 'Save model checkpoint every this 
 tf.app.flags.DEFINE_integer('valid_freq', 500, 'Evaluate model every this iteration: valid_data needed')
 tf.app.flags.DEFINE_string('optimizer', 'adam', 'Optimizer for training: (adadelta, adam, rmsprop)')
 tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoints')
-tf.app.flags.DEFINE_string('model_name', 'summary.ckpt', 'File name used for model checkpoints')
+tf.app.flags.DEFINE_string('model_name', 'q1q2.ckpt', 'File name used for model checkpoints')
 tf.app.flags.DEFINE_boolean('shuffle_each_epoch', False, 'Shuffle training dataset for each epoch')
 tf.app.flags.DEFINE_boolean('sort_by_length', False, 'Sort pre-fetched minibatches by their target sequence lengths')
 tf.app.flags.DEFINE_boolean('use_fp16', False, 'Use half precision float16 instead of float32 as dtype')
@@ -122,7 +122,6 @@ def train():
         
         # Training loop
         print('Training..')
-        
         
         for epoch_idx in range(FLAGS.max_epochs):
             if model.global_epoch_step.eval() >= FLAGS.max_epochs:
