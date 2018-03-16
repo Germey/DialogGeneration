@@ -196,7 +196,7 @@ def train():
                     print('Saving the model..')
                     checkpoint_path = os.path.join(FLAGS.model_dir, FLAGS.model_name)
                     model.save(sess, checkpoint_path, global_step=model.global_step)
-                    json.dump(model.config.flag_values_dict(),
+                    json.dump(model.config,
                               open('%s-%d.json' % (checkpoint_path, model.global_step.eval()), 'w'),
                               indent=2)
             
