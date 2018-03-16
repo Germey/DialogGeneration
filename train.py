@@ -40,7 +40,7 @@ tf.app.flags.DEFINE_float('dropout_rate', 0.3, 'Dropout probability for input/ou
 # Training parameters
 tf.app.flags.DEFINE_float('learning_rate', 0.0002, 'Learning rate')
 tf.app.flags.DEFINE_float('max_gradient_norm', 1.0, 'Clip gradients to this norm')
-tf.app.flags.DEFINE_integer('batch_size', 28, 'Batch size')
+tf.app.flags.DEFINE_integer('batch_size', 128, 'Batch size')
 tf.app.flags.DEFINE_integer('max_epochs', 10000, 'Maximum # of training epochs')
 tf.app.flags.DEFINE_integer('max_load_batches', 20, 'Maximum # of batches to load at one time')
 tf.app.flags.DEFINE_integer('max_seq_length', 1500, 'Maximum sequence length')
