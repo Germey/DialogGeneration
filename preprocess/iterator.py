@@ -139,7 +139,6 @@ class BiTextIterator(object):
         self.target_buffer = []
         
         self.end_of_data = False
-        self.reset()
     
     def reset(self):
         """

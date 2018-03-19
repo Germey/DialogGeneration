@@ -29,8 +29,8 @@ tf.app.flags.DEFINE_string('attention_type', 'bahdanau', 'Attention mechanism: (
 tf.app.flags.DEFINE_integer('hidden_units', 1024, 'Number of hidden units in each layer')
 tf.app.flags.DEFINE_integer('depth', 2, 'Number of layers in each encoder and decoder')
 tf.app.flags.DEFINE_integer('embedding_size', 300, 'Embedding dimensions of encoder and decoder inputs')
-tf.app.flags.DEFINE_integer('num_encoder_symbols', config.VOCABS_SIZE_LIMIT, 'Source vocabulary size')
-tf.app.flags.DEFINE_integer('num_decoder_symbols', config.VOCABS_SIZE_LIMIT, 'Target vocabulary size')
+tf.app.flags.DEFINE_integer('num_encoder_symbols', 10000, 'Source vocabulary size')
+tf.app.flags.DEFINE_integer('num_decoder_symbols', 10000, 'Target vocabulary size')
 
 tf.app.flags.DEFINE_boolean('use_residual', True, 'Use residual connection between layers')
 tf.app.flags.DEFINE_boolean('attn_input_feeding', False, 'Use input feeding method in attentional decoder')
@@ -129,6 +129,9 @@ def train():
                       'current epoch:{}, max epoch:{}'.format(model.global_epoch_step.eval(), FLAGS.max_epochs))
                 break
             
+            # reset train set
+            train_set.reset()
+            
             for source_seq, target_seq in train_set.next():
                 # Get a batch from training parallel data
                 source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq,
@@ -175,6 +178,10 @@ def train():
                     print('Validation step')
                     valid_loss = 0.0
                     valid_sents_seen = 0
+                    
+                    # reset valid set
+                    valid_set.reset()
+                    
                     for source_seq, target_seq in valid_set.next():
                         # Get a batch from validation parallel data
                         source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq)
