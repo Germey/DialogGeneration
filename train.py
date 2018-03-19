@@ -29,8 +29,8 @@ tf.app.flags.DEFINE_string('attention_type', 'bahdanau', 'Attention mechanism: (
 tf.app.flags.DEFINE_integer('hidden_units', 1024, 'Number of hidden units in each layer')
 tf.app.flags.DEFINE_integer('depth', 2, 'Number of layers in each encoder and decoder')
 tf.app.flags.DEFINE_integer('embedding_size', 300, 'Embedding dimensions of encoder and decoder inputs')
-tf.app.flags.DEFINE_integer('num_encoder_symbols', 10000, 'Source vocabulary size')
-tf.app.flags.DEFINE_integer('num_decoder_symbols', 10000, 'Target vocabulary size')
+tf.app.flags.DEFINE_integer('num_encoder_symbols', 6564, 'Source vocabulary size')
+tf.app.flags.DEFINE_integer('num_decoder_symbols', 6564, 'Target vocabulary size')
 
 tf.app.flags.DEFINE_boolean('use_residual', True, 'Use residual connection between layers')
 tf.app.flags.DEFINE_boolean('attn_input_feeding', False, 'Use input feeding method in attentional decoder')
