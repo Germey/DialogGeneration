@@ -147,6 +147,11 @@ class BiTextIterator(object):
         """
         self.source.seek(0)
         self.target.seek(0)
+
+        self.source_buffer = []
+        self.target_buffer = []
+        
+        self.end_of_data = False
         
         assert len(self.source_buffer) == len(self.target_buffer), 'Buffer size mismatch!'
         
