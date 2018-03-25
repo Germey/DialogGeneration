@@ -44,7 +44,7 @@ tf.app.flags.DEFINE_integer('batch_size', 64, 'Batch size')
 tf.app.flags.DEFINE_integer('max_epochs', 10000, 'Maximum # of training epochs')
 tf.app.flags.DEFINE_integer('max_load_batches', 20, 'Maximum # of batches to load at one time')
 tf.app.flags.DEFINE_integer('max_seq_length', 20, 'Maximum sequence length')
-tf.app.flags.DEFINE_integer('display_freq', 200, 'Display training status every this iteration')
+tf.app.flags.DEFINE_integer('display_freq', 300, 'Display training status every this iteration')
 tf.app.flags.DEFINE_integer('save_freq', 50000, 'Save model checkpoint every this iteration')
 tf.app.flags.DEFINE_integer('valid_freq', 500, 'Evaluate model every this iteration: valid_data needed')
 tf.app.flags.DEFINE_string('optimizer', 'adam', 'Optimizer for training: (adadelta, adam, rmsprop)')
@@ -136,9 +136,6 @@ def train():
                 # Get a batch from training parallel data
                 source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq,
                                                                              FLAGS.max_seq_length)
-                # print('Get Data', source.shape, target.shape, source_len, target_len)
-                print('Get Data', source.shape, target.shape)
-                # print('Data', source[0], target[0], source_len[0], target_len[0])
                 
                 if source is None or target is None:
                     print('No samples under max_seq_length ', FLAGS.max_seq_length)
@@ -161,8 +158,8 @@ def train():
                     words_per_sec = words_seen / time_elapsed
                     sents_per_sec = sents_seen / time_elapsed
                     
-                    print('Epoch ', model.global_epoch_step.eval(), 'Step ', model.global_step.eval(),
-                          'Perplexity {0:.2f}'.format(avg_perplexity), 'Step-time ', step_time,
+                    print('Epoch:', model.global_epoch_step.eval(), 'Step:', model.global_step.eval(),
+                          'Perplexity {0:.2f}:'.format(avg_perplexity), 'Loss:', loss, 'Step-time:', step_time,
                           '{0:.2f} sents/s'.format(sents_per_sec), '{0:.2f} words/s'.format(words_per_sec))
                     
                     loss = 0
@@ -196,7 +193,7 @@ def train():
                         print('  {} samples seen'.format(valid_sents_seen))
                     
                     valid_loss = valid_loss / valid_sents_seen
-                    print('Valid perplexity: {0:.2f}'.format(math.exp(valid_loss)))
+                    print('Valid perplexity: {0:.2f}:'.format(math.exp(valid_loss)), 'Loss:', valid_loss)
                 
                 # Save the model checkpoint
                 if model.global_step.eval() % FLAGS.save_freq == 0:
