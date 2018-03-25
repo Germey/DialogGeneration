@@ -1,5 +1,8 @@
+import time
+
 from preprocess.iterator import BiTextIterator, TextIterator
 from train import FLAGS
+from tqdm import tqdm
 
 
 def main():
@@ -13,10 +16,14 @@ def main():
                                n_words_target=FLAGS.num_decoder_symbols,
                                sort_by_length=FLAGS.sort_by_length
                                )
-    train_set.reset()
-    
-    for source, target in train_set.next():
-        print('Length', len(source), len(target))
+    with tqdm(total=train_set.length()) as pbar:
+        train_set.reset()
+        processed_length = 0
+        for source, target in train_set.next():
+            processed_length += len(source)
+            print('Length', len(source), len(target), processed_length)
+            time.sleep(5)
+            pbar.update(processed_length)
     
     train_set.reset()
     

@@ -11,6 +11,7 @@ from preprocess.iterator import BiTextIterator
 from model import Seq2SeqModel
 import config
 # Data loading parameters
+from tqdm import tqdm
 from utils import prepare_train_batch
 
 tf.app.flags.DEFINE_string('source_vocabulary', 'dataset/q1q2/vocab.json', 'Path to source vocabulary')
@@ -117,7 +118,7 @@ def train():
         model = create_model(sess, FLAGS)
         
         step_time, loss = 0.0, 0.0
-        words_seen, sents_seen = 0, 0
+        words_seen, sents_seen, processed_number = 0, 0, 0
         start_time = time.time()
         
         # Training loop
@@ -132,77 +133,87 @@ def train():
             # reset train set
             train_set.reset()
             
-            for source_seq, target_seq in train_set.next():
-                # Get a batch from training parallel data
-                source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq,
-                                                                             FLAGS.max_seq_length)
+            processed_length = 0
+            
+            with tqdm(total=train_set.length()) as pbar:
                 
-                if source is None or target is None:
-                    print('No samples under max_seq_length ', FLAGS.max_seq_length)
-                    continue
-                
-                # Execute a single training step
-                step_loss, summary = model.train(sess, encoder_inputs=source, encoder_inputs_length=source_len,
-                                                 decoder_inputs=target, decoder_inputs_length=target_len)
-                
-                loss += float(step_loss) / FLAGS.display_freq
-                words_seen += float(np.sum(source_len + target_len))
-                sents_seen += float(source.shape[0])  # batch_size
-                
-                if model.global_step.eval() % FLAGS.display_freq == 0:
-                    avg_perplexity = math.exp(float(loss)) if loss < 300 else float("inf")
+                for source_seq, target_seq in train_set.next():
+                    # Get a batch from training parallel data
+                    source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq,
+                                                                                 FLAGS.max_seq_length)
                     
-                    time_elapsed = time.time() - start_time
-                    step_time = time_elapsed / FLAGS.display_freq
+                    processed_number += len(source_seq)
                     
-                    words_per_sec = words_seen / time_elapsed
-                    sents_per_sec = sents_seen / time_elapsed
+                    if source is None or target is None:
+                        print('No samples under max_seq_length ', FLAGS.max_seq_length)
+                        continue
                     
-                    print('Epoch:', model.global_epoch_step.eval(), 'Step:', model.global_step.eval(),
-                          'Perplexity {0:.2f}:'.format(avg_perplexity), 'Loss:', loss, 'Step-time:', step_time,
-                          '{0:.2f} sents/s'.format(sents_per_sec), '{0:.2f} words/s'.format(words_per_sec))
+                    # Execute a single training step
+                    step_loss, summary = model.train(sess, encoder_inputs=source, encoder_inputs_length=source_len,
+                                                     decoder_inputs=target, decoder_inputs_length=target_len)
                     
-                    loss = 0
-                    words_seen = 0
-                    sents_seen = 0
-                    start_time = time.time()
+                    loss += float(step_loss) / FLAGS.display_freq
+                    words_seen += float(np.sum(source_len + target_len))
+                    sents_seen += float(source.shape[0])  # batch_size
                     
-                    # Record training summary for the current batch
-                    log_writer.add_summary(summary, model.global_step.eval())
-                
-                # Execute a validation step
-                if valid_set and model.global_step.eval() % FLAGS.valid_freq == 0:
-                    print('Validation step')
-                    valid_loss = 0.0
-                    valid_sents_seen = 0
-                    
-                    # reset valid set
-                    valid_set.reset()
-                    
-                    for source_seq, target_seq in valid_set.next():
-                        # Get a batch from validation parallel data
-                        source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq)
+                    if model.global_step.eval() % FLAGS.display_freq == 0:
+                        avg_perplexity = math.exp(float(loss)) if loss < 300 else float("inf")
                         
-                        # Compute validation loss: average per word cross entropy loss
-                        step_loss, summary = model.eval(sess, encoder_inputs=source, encoder_inputs_length=source_len,
-                                                        decoder_inputs=target, decoder_inputs_length=target_len)
-                        batch_size = source.shape[0]
+                        time_elapsed = time.time() - start_time
+                        step_time = time_elapsed / FLAGS.display_freq
                         
-                        valid_loss += step_loss * batch_size
-                        valid_sents_seen += batch_size
-                        print('  {} samples seen'.format(valid_sents_seen))
+                        words_per_sec = words_seen / time_elapsed
+                        sents_per_sec = sents_seen / time_elapsed
+                        
+                        print('Epoch:', model.global_epoch_step.eval(), 'Step:', model.global_step.eval(),
+                              'Perplexity {0:.2f}:'.format(avg_perplexity), 'Loss:', loss, 'Step-time:', step_time,
+                              '{0:.2f} sents/s'.format(sents_per_sec), '{0:.2f} words/s'.format(words_per_sec))
+                        
+                        pbar.update(processed_number)
+                        
+                        loss = 0
+                        words_seen = 0
+                        sents_seen = 0
+                        processed_number = 0
+                        start_time = time.time()
+                        
+                        # Record training summary for the current batch
+                        log_writer.add_summary(summary, model.global_step.eval())
                     
-                    valid_loss = valid_loss / valid_sents_seen
-                    print('Valid perplexity: {0:.2f}:'.format(math.exp(valid_loss)), 'Loss:', valid_loss)
-                
-                # Save the model checkpoint
-                if model.global_step.eval() % FLAGS.save_freq == 0:
-                    print('Saving the model..')
-                    checkpoint_path = os.path.join(FLAGS.model_dir, FLAGS.model_name)
-                    model.save(sess, checkpoint_path, global_step=model.global_step)
-                    json.dump(model.config,
-                              open('%s-%d.json' % (checkpoint_path, model.global_step.eval()), 'w'),
-                              indent=2)
+                    # Execute a validation step
+                    if valid_set and model.global_step.eval() % FLAGS.valid_freq == 0:
+                        print('Validation step')
+                        valid_loss = 0.0
+                        valid_sents_seen = 0
+                        
+                        # reset valid set
+                        valid_set.reset()
+                        
+                        for source_seq, target_seq in valid_set.next():
+                            # Get a batch from validation parallel data
+                            source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq)
+                            
+                            # Compute validation loss: average per word cross entropy loss
+                            step_loss, summary = model.eval(sess, encoder_inputs=source,
+                                                            encoder_inputs_length=source_len,
+                                                            decoder_inputs=target, decoder_inputs_length=target_len)
+                            batch_size = source.shape[0]
+                            
+                            valid_loss += step_loss * batch_size
+                            valid_sents_seen += batch_size
+                            print('  {} samples seen'.format(valid_sents_seen))
+                        
+                        valid_loss = valid_loss / valid_sents_seen
+                        print('Valid perplexity: {0:.2f}:'.format(math.exp(valid_loss)), 'Loss:', valid_loss)
+                    
+                    # Save the model checkpoint
+                    if model.global_step.eval() % FLAGS.save_freq == 0:
+                        print('Saving the model..')
+                        checkpoint_path = os.path.join(FLAGS.model_dir, FLAGS.model_name)
+                        model.save(sess, checkpoint_path, global_step=model.global_step)
+                        json.dump(model.config,
+                                  open('%s-%d.json' % (checkpoint_path, model.global_step.eval()), 'w'),
+                                  indent=2)
             
             # Increase the epoch index of the model
             model.global_epoch_step_op.eval()
