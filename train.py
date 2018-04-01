@@ -12,16 +12,18 @@ from model import Seq2SeqModel
 import config
 # Data loading parameters
 from tqdm import tqdm
-from utils import prepare_train_batch
+import os
+from utils import prepare_pair_batch
 
-tf.app.flags.DEFINE_string('source_vocabulary', 'dataset/q1q2/vocab.json', 'Path to source vocabulary')
-tf.app.flags.DEFINE_string('target_vocabulary', 'dataset/q1q2/vocab.json', 'Path to target vocabulary')
-tf.app.flags.DEFINE_string('source_train_data', 'dataset/q1q2/request.txt', 'Path to source training data')
-tf.app.flags.DEFINE_string('target_train_data', 'dataset/q1q2/response.txt',
+tf.app.flags.DEFINE_string('source_vocabulary', 'dataset/prefix_phrase_char/vocab.json', 'Path to source vocabulary')
+tf.app.flags.DEFINE_string('target_vocabulary', 'dataset/prefix_phrase_char/vocab.json', 'Path to target vocabulary')
+tf.app.flags.DEFINE_string('source_train_data', 'dataset/prefix_phrase_char/train.x.txt',
+                           'Path to source training data')
+tf.app.flags.DEFINE_string('target_train_data', 'dataset/prefix_phrase_char/train.y.txt',
                            'Path to target training data')
-tf.app.flags.DEFINE_string('source_valid_data', None,
+tf.app.flags.DEFINE_string('source_valid_data', 'dataset/prefix_phrase_char/valid.x.txt',
                            'Path to source validation data')
-tf.app.flags.DEFINE_string('target_valid_data', None,
+tf.app.flags.DEFINE_string('target_valid_data', 'dataset/prefix_phrase_char/valid.y.txt',
                            'Path to target validation data')
 
 # Network parameters
@@ -29,7 +31,7 @@ tf.app.flags.DEFINE_string('cell_type', 'gru', 'RNN cell for encoder and decoder
 tf.app.flags.DEFINE_string('attention_type', 'bahdanau', 'Attention mechanism: (bahdanau, luong), default: bahdanau')
 tf.app.flags.DEFINE_integer('hidden_units', 1024, 'Number of hidden units in each layer')
 tf.app.flags.DEFINE_integer('depth', 2, 'Number of layers in each encoder and decoder')
-tf.app.flags.DEFINE_integer('embedding_size', 300, 'Embedding dimensions of encoder and decoder inputs')
+tf.app.flags.DEFINE_integer('embedding_size', 200, 'Embedding dimensions of encoder and decoder inputs')
 tf.app.flags.DEFINE_integer('num_encoder_symbols', 6564, 'Source vocabulary size')
 tf.app.flags.DEFINE_integer('num_decoder_symbols', 6564, 'Target vocabulary size')
 
@@ -46,16 +48,17 @@ tf.app.flags.DEFINE_integer('max_epochs', 10000, 'Maximum # of training epochs')
 tf.app.flags.DEFINE_integer('max_load_batches', 20, 'Maximum # of batches to load at one time')
 tf.app.flags.DEFINE_integer('max_seq_length', 20, 'Maximum sequence length')
 tf.app.flags.DEFINE_integer('display_freq', 300, 'Display training status every this iteration')
-tf.app.flags.DEFINE_integer('save_freq', 50000, 'Save model checkpoint every this iteration')
-tf.app.flags.DEFINE_integer('valid_freq', 500, 'Evaluate model every this iteration: valid_data needed')
+tf.app.flags.DEFINE_integer('save_freq', 30000, 'Save model checkpoint every this iteration')
+tf.app.flags.DEFINE_integer('valid_freq', 1000, 'Evaluate model every this iteration: valid_data needed')
 tf.app.flags.DEFINE_string('optimizer', 'adam', 'Optimizer for training: (adadelta, adam, rmsprop)')
-tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoints')
-tf.app.flags.DEFINE_string('model_name', 'q1q2.ckpt', 'File name used for model checkpoints')
+tf.app.flags.DEFINE_string('model_dir', 'model/prefix_phrase_char', 'Path to save model checkpoints')
+tf.app.flags.DEFINE_string('model_name', 'dialog.ckpt', 'File name used for model checkpoints')
 tf.app.flags.DEFINE_boolean('shuffle_each_epoch', False, 'Shuffle training dataset for each epoch')
 tf.app.flags.DEFINE_boolean('sort_by_length', False, 'Sort pre-fetched minibatches by their target sequence lengths')
 tf.app.flags.DEFINE_boolean('use_fp16', False, 'Use half precision float16 instead of float32 as dtype')
 
 # Runtime parameters
+tf.app.flags.DEFINE_string('gpu', '0', 'GPU Number')
 tf.app.flags.DEFINE_boolean('allow_soft_placement', True, 'Allow device soft placement')
 tf.app.flags.DEFINE_boolean('log_device_placement', False, 'Log placement of ops on devices')
 
@@ -81,6 +84,8 @@ def create_model(session, FLAGS):
 
 
 def train():
+    os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu
+    
     # Load parallel data to train
     print('Loading training data..')
     train_set = BiTextIterator(source=FLAGS.source_train_data,
@@ -101,8 +106,10 @@ def train():
                                    source_dict=FLAGS.source_vocabulary,
                                    target_dict=FLAGS.target_vocabulary,
                                    batch_size=FLAGS.batch_size,
+                                   max_length=FLAGS.max_seq_length,
                                    n_words_source=FLAGS.num_encoder_symbols,
-                                   n_words_target=FLAGS.num_decoder_symbols)
+                                   n_words_target=FLAGS.num_decoder_symbols,
+                                   sort_by_length=FLAGS.sort_by_length)
     else:
         valid_set = None
     
@@ -133,14 +140,13 @@ def train():
             # reset train set
             train_set.reset()
             
-            processed_length = 0
-            
             with tqdm(total=train_set.length()) as pbar:
                 
                 for source_seq, target_seq in train_set.next():
                     # Get a batch from training parallel data
-                    source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq,
-                                                                                 FLAGS.max_seq_length)
+                    source, source_len, target, target_len = prepare_pair_batch(source_seq, target_seq,
+                                                                                FLAGS.max_seq_length,
+                                                                                FLAGS.max_seq_length)
                     
                     processed_number += len(source_seq)
                     
@@ -191,7 +197,9 @@ def train():
                         
                         for source_seq, target_seq in valid_set.next():
                             # Get a batch from validation parallel data
-                            source, source_len, target, target_len = prepare_train_batch(source_seq, target_seq)
+                            source, source_len, target, target_len = prepare_pair_batch(source_seq, target_seq,
+                                                                                        FLAGS.max_seq_length,
+                                                                                        FLAGS.max_seq_length)
                             
                             # Compute validation loss: average per word cross entropy loss
                             step_loss, summary = model.eval(sess, encoder_inputs=source,
@@ -201,7 +209,8 @@ def train():
                             
                             valid_loss += step_loss * batch_size
                             valid_sents_seen += batch_size
-                            print('  {} samples seen'.format(valid_sents_seen))
+                            print('{} samples seen,'.format(valid_sents_seen),
+                                  'Step Loss: {0:.2f}'.format(step_loss))
                         
                         valid_loss = valid_loss / valid_sents_seen
                         print('Valid perplexity: {0:.2f}:'.format(math.exp(valid_loss)), 'Loss:', valid_loss)

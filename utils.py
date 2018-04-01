@@ -70,24 +70,28 @@ def prepare_batch(seqs_x, maxlen=None):
 
 
 # batch preparation of a given sequence pair for training
-def prepare_train_batch(seqs_x, seqs_y, maxlen=None):
+def prepare_pair_batch(seqs_x, seqs_y, x_max_length=None, y_max_length=None):
     # seqs_x, seqs_y: a list of sentences
     lengths_x = [len(s) for s in seqs_x]
     lengths_y = [len(s) for s in seqs_y]
     
-    if maxlen is not None:
+    if x_max_length is not None:
         new_seqs_x = []
-        new_seqs_y = []
         new_lengths_x = []
-        new_lengths_y = []
-        for l_x, s_x, l_y, s_y in zip(lengths_x, seqs_x, lengths_y, seqs_y):
-            if l_x <= maxlen and l_y <= maxlen:
-                new_seqs_x.append(s_x)
-                new_lengths_x.append(l_x)
-                new_seqs_y.append(s_y)
-                new_lengths_y.append(l_y)
+        for s_x in seqs_x:
+            s_x = s_x[:x_max_length]
+            new_seqs_x.append(s_x)
+            new_lengths_x.append(len(s_x))
         lengths_x = new_lengths_x
         seqs_x = new_seqs_x
+    
+    if y_max_length is not None:
+        new_seqs_y = []
+        new_lengths_y = []
+        for s_y in seqs_y:
+            s_y = s_y[:y_max_length]
+            new_seqs_y.append(s_y)
+            new_lengths_y.append(len(s_y))
         lengths_y = new_lengths_y
         seqs_y = new_seqs_y
         
@@ -99,11 +103,11 @@ def prepare_train_batch(seqs_x, seqs_y, maxlen=None):
     x_lengths = np.array(lengths_x)
     y_lengths = np.array(lengths_y)
     
-    maxlen_x = np.max(x_lengths)
-    maxlen_y = np.max(y_lengths)
+    max_x = np.max(x_lengths)
+    max_y = np.max(y_lengths)
     
-    x = np.ones((batch_size, maxlen_x)).astype('int32') * end_token
-    y = np.ones((batch_size, maxlen_y)).astype('int32') * end_token
+    x = np.ones((batch_size, max_x)).astype('int32') * end_token
+    y = np.ones((batch_size, max_y)).astype('int32') * end_token
     
     for idx, [s_x, s_y] in enumerate(zip(seqs_x, seqs_y)):
         x[idx, :lengths_x[idx]] = s_x
