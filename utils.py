@@ -26,6 +26,7 @@ def load_inverse_dict(dict_path):
             idict[idx] = words
     return idict
 
+
 def seq2words(seq, inverse_target_dictionary):
     words = []
     for w in seq:
@@ -36,6 +37,7 @@ def seq2words(seq, inverse_target_dictionary):
         else:
             words.append(UNK)
     return ' '.join(words)
+
 
 # batch preparation of a given sequence
 def prepare_batch(seqs_x, maxlen=None):
