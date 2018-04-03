@@ -1,5 +1,6 @@
 # !/usr/bin/env python
 # coding: utf-8
+import os
 from preprocess.iterator import TextIterator
 from utils import prepare_batch, load_inverse_dict, seq2words
 import json
@@ -8,16 +9,18 @@ from model import Seq2SeqModel
 
 # Decoding parameters
 tf.app.flags.DEFINE_integer('beam_width', 1, 'Beam width used in beam search')
-tf.app.flags.DEFINE_integer('decode_batch_size', 1, 'Batch size used for decoding')
-tf.app.flags.DEFINE_integer('max_decode_step', 50, 'Maximum time step limit to decode')
+tf.app.flags.DEFINE_integer('decode_batch_size', 64, 'Batch size used for decoding')
+tf.app.flags.DEFINE_integer('max_decode_step', 20, 'Maximum time step limit to decode')
 tf.app.flags.DEFINE_boolean('write_n_best', False, 'Write n-best list (n=beam_width)')
-tf.app.flags.DEFINE_string('model_path', 'model/summary.ckpt-1000', 'Path to a specific model checkpoint.')
-tf.app.flags.DEFINE_string('decode_input', 'dataset/nlpcc_char/articles.eval.txt', 'Decoding input path')
-tf.app.flags.DEFINE_string('decode_output', 'dataset/nlpcc_char/articles.decode.txt', 'Decoding output path')
+tf.app.flags.DEFINE_string('model_path', 'model/prefix_phrase_char/dialog.ckpt-240000',
+                           'Path to a specific model checkpoint.')
+tf.app.flags.DEFINE_string('decode_input', 'dataset/prefix_phrase_char/test.x.txt', 'Decoding input path')
+tf.app.flags.DEFINE_string('decode_output', 'dataset/prefix_phrase_char/test.y.txt', 'Decoding output path')
 
 # Runtime parameters
 tf.app.flags.DEFINE_boolean('allow_soft_placement', True, 'Allow device soft placement')
 tf.app.flags.DEFINE_boolean('log_device_placement', False, 'Log placement of ops on devices')
+tf.app.flags.DEFINE_string('gpu', '0', 'GPU Number')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -41,6 +44,8 @@ def load_model(session, config):
 
 
 def decode():
+    os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu
+    
     # Load model config
     config = load_config(FLAGS)
     print(config)
