@@ -12,10 +12,10 @@ unk_token = extra_tokens.index(config.UNK)
 
 def load_dict(filename):
     try:
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             return pickle.load(f)
 
 
@@ -54,6 +54,10 @@ class TextIterator(object):
     
     def reset(self):
         self.source.seek(0)
+        
+        self.source_buffer = []
+        self.target_buffer = []
+        
         self.end_of_data = False
         # fill buffer, if it's empty
         if len(self.source_buffer) == 0:
@@ -89,7 +93,12 @@ class TextIterator(object):
                 if self.skip_empty and not ss:
                     continue
                 source.append(ss)
-            if len(source) >= self.batch_size or self.end_of_data:
+            
+            if self.end_of_data and len(source):
+                yield source
+                source = []
+            
+            if len(source) >= self.batch_size:
                 yield source
                 source = []
 
@@ -147,7 +156,7 @@ class BiTextIterator(object):
         """
         self.source.seek(0)
         self.target.seek(0)
-
+        
         self.source_buffer = []
         self.target_buffer = []
         
@@ -210,6 +219,10 @@ class BiTextIterator(object):
                 source.append(ss)
                 target.append(tt)
             
-            if len(source) >= self.batch_size or len(target) >= self.batch_size or self.end_of_data:
+            if self.end_of_data and len(source) and len(target):
+                yield source, target
+                source, target = [], []
+            
+            if len(source) >= self.batch_size and len(target) >= self.batch_size:
                 yield source, target
                 source, target = [], []
