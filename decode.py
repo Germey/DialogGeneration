@@ -85,11 +85,11 @@ def decode():
                 # BeamSearchDecoder; [batch_size, max_time_step, beam_width]
                 predicted_ids = model.predict(sess, encoder_inputs=source,
                                               encoder_inputs_length=source_len)
-                print(predicted_ids)
                 # Write decoding results
                 for k, f in reversed(list(enumerate(fout))):
                     for seq in predicted_ids:
-                        f.write(str(seq2words(seq[:, k], target_inverse_dict)) + '\n')
+                        result = str(seq2words(seq[:, k], target_inverse_dict))
+                        f.write(result + '\n')
                         f.flush()
                     if not FLAGS.write_n_best:
                         break
