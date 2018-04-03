@@ -427,6 +427,7 @@ class Seq2SeqModel(object):
     def train(self, sess, encoder_inputs, encoder_inputs_length,
               decoder_inputs, decoder_inputs_length):
         """Run a train step of the model feeding the given inputs.
+                tf.summary.scalar('loss', self.loss)
 
         Args:
           session: tensorflow session to use.
@@ -444,6 +445,9 @@ class Seq2SeqModel(object):
           average perplexity, and the outputs.
         """
         # Check if the model is 'training' mode
+
+        tf.summary.scalar('train_loss', self.loss)
+
         if self.mode.lower() != 'train':
             raise ValueError("train step can only be operated in train mode")
         
@@ -479,7 +483,8 @@ class Seq2SeqModel(object):
           A triple consisting of gradient norm (or None if we did not do backward),
           average perplexity, and the outputs.
         """
-        
+        tf.summary.scalar('eval_loss', self.loss)
+
         input_feed = self.check_feeds(encoder_inputs, encoder_inputs_length,
                                       decoder_inputs, decoder_inputs_length, False)
         # Input feeds for dropout

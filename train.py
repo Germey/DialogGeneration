@@ -13,7 +13,7 @@ import config
 # Data loading parameters
 from tqdm import tqdm
 import os
-from utils import prepare_pair_batch
+from utils import prepare_pair_batch, get_summary
 
 tf.app.flags.DEFINE_string('source_vocabulary', 'dataset/prefix_phrase_char/vocab.json', 'Path to source vocabulary')
 tf.app.flags.DEFINE_string('target_vocabulary', 'dataset/prefix_phrase_char/vocab.json', 'Path to target vocabulary')
@@ -121,12 +121,14 @@ def train():
                                           log_device_placement=FLAGS.log_device_placement,
                                           gpu_options=tf.GPUOptions(allow_growth=True))) as sess:
         
-        # Create a log writer object
-        log_writer = tf.summary.FileWriter(FLAGS.model_dir, graph=sess.graph)
         
         # Create a new model or reload existing checkpoint
         model = create_model(sess, FLAGS)
-        
+
+        # Create a log writer object
+        train_summary_writer = tf.summary.FileWriter(join(FLAGS.model_dir, 'train'), graph=sess.graph)
+        valid_summary_writer = tf.summary.FileWriter(join(FLAGS.model_dir, 'valid'), graph=sess.graph)
+
         step_time, loss = 0.0, 0.0
         words_seen, sents_seen, processed_number = 0, 0, 0
         start_time = time.time()
@@ -180,6 +182,12 @@ def train():
                         print('Epoch:', model.global_epoch_step.eval(), 'Step:', model.global_step.eval(),
                               'Perplexity {0:.2f}:'.format(avg_perplexity), 'Loss:', loss, 'Step-time:', step_time,
                               '{0:.2f} sents/s'.format(sents_per_sec), '{0:.2f} words/s'.format(words_per_sec))
+
+                        # Record training summary for the current batch
+                        summary = get_summary('train_loss', loss)
+                        train_summary_writer.add_summary(summary, model.global_step.eval())
+                        print('Record Training Summary', model.global_step.eval())
+                        train_summary_writer.flush()
                         
                         pbar.update(processed_number)
                         
@@ -189,8 +197,6 @@ def train():
                         processed_number = 0
                         start_time = time.time()
                         
-                        # Record training summary for the current batch
-                        log_writer.add_summary(summary, model.global_step.eval())
                     
                     # Execute a validation step
                     if valid_set and model.global_step.eval() % FLAGS.valid_freq == 0:
@@ -220,7 +226,13 @@ def train():
                         
                         valid_loss = valid_loss / valid_sents_seen
                         print('Valid perplexity: {0:.2f}:'.format(math.exp(valid_loss)), 'Loss:', valid_loss)
-                    
+
+                        # Record training summary for the current batch
+                        summary = get_summary('valid_loss', valid_loss)
+                        valid_summary_writer.add_summary(summary, model.global_step.eval())
+                        print('Record Valid Summary', model.global_step.eval())
+                        valid_summary_writer.flush()
+                        
                     # Save the model checkpoint
                     if model.global_step.eval() % FLAGS.save_freq == 0:
                         print('Saving the model..')
