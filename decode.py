@@ -77,9 +77,10 @@ def decode():
             test_set.reset()
             
             for idx, source_seq in enumerate(test_set.next()):
-                print('Source', source_seq)
                 source, source_len = prepare_batch(source_seq)
-                print('Source', source, 'Source Len', source_len)
+                print('Get Batch', len(source), len(source_len))
+                
+                print('Source', list(source[0]), 'Source Len', source_len[0])
                 # predicted_ids: GreedyDecoder; [batch_size, max_time_step, 1]
                 # BeamSearchDecoder; [batch_size, max_time_step, beam_width]
                 predicted_ids = model.predict(sess, encoder_inputs=source,
